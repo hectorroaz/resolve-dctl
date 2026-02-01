@@ -1,34 +1,47 @@
-DEFINE_UI_PARAMS(timeGamma, Timeline Gamma, DCTLUI_COMBO_BOX, 0, {recGam, linGam}, {Scene,Linear})
+DEFINE_UI_PARAMS(timeGamma, Timeline Gamma, DCTLUI_COMBO_BOX, 0, {SCENE, LINEAR}, {Scene, Linear})
 
-__DEVICE__ float lin_to_rec(float x) {
-	if(x < .0018f) return 4.5f * x;
-	else return 1.099f * _powf(x,0.45f) - 0.099f;
+__DEVICE__ float lin_to_rec(float x)
+{
+    if (x < 0.0018f)
+        return 4.5f * x;
+    else
+        return 1.099f * powf(x, 0.45f) - 0.099f;
 }
 
-
-__DEVICE__ float3 transform(int p_Width, int p_Height, int p_X, int p_Y, float p_R, float p_G, float p_B)
+__DEVICE__ float3 apply_gamma(float3 c)
 {
+    if (timeGamma == SCENE)
+    {
+        c.x = lin_to_rec(c.x);
+        c.y = lin_to_rec(c.y);
+        c.z = lin_to_rec(c.z);
+    }
+    return c;
+}
 
-	int p_Size = p_Width / 3;
-	if(p_X >= p_Size * 2) { //White
-		p_R = 1.0f;
-		p_G = 1.0f;
-		p_B = 1.0f;
-	} else if( p_X >= p_Size) { // 18% Gray
-		p_R = 0.18f;
-		p_G = 0.18f;
-		p_B = 0.18f;
-	} else { // Black
-		p_R = 0.0f;
-		p_G = 0.0f;
-		p_B = 0.0f;
-	}
+__DEVICE__ float3 transform(float3 in, float2 uv, int2 size)
+{
+    int section = size.x / 3;
 
-	if(timeGamma == recGam) {
-		p_R = lin_to_rec(p_R);
-		p_G = lin_to_rec(p_G);
-		p_B = lin_to_rec(p_B);
-	}
+    float3 out;
 
-	return make_float3(p_R,p_G,p_B);
+    if (uv.x * size.x >= section * 2)
+    {
+        // White
+        out = make_float3(1.0f, 1.0f, 1.0f);
+    }
+    else if (uv.x * size.x >= section)
+    {
+        // 18% Gray
+        out = make_float3(0.18f, 0.18f, 0.18f);
+    }
+    else
+    {
+        // Black
+        out = make_float3(0.0f, 0.0f, 0.0f);
+    }
+
+    out = apply_gamma(out);
+
+    return out;
 }
